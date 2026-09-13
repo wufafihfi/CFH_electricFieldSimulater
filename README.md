@@ -14,8 +14,5 @@
 - **imgui-sfml 3.0** - 采用 MIT 许可证  
   项目地址：https://github.com/elisee/imgui-sfml
 
-- **JsonCpp 1.9.6** - 采用 MIT 许可证  
-  项目地址：https://github.com/open-source-parsers/jsoncpp
-
 - JsonCpp 和 SFML 3.0.1使用VCPKG集成
 - Dear ImGui 1.91.9 (Docking分支) 和 imgui-sfml 3.0在dependence文件夹中
