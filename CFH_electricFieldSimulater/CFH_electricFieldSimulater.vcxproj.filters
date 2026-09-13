@@ -1,0 +1,117 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="源文件">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="头文件">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="资源文件">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="头文件\imgui">
+      <UniqueIdentifier>{7b96c402-2178-429e-90b6-531150a79908}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="头文件\imgui-sfml">
+      <UniqueIdentifier>{0d34452c-db09-4a26-8d71-5b7266074045}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="源文件\ingui">
+      <UniqueIdentifier>{631e0bbd-0e6d-462f-959f-bebffed4e33f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="源文件\ingui-sfml">
+      <UniqueIdentifier>{5c661f54-a909-432f-ad1d-f1d37ad89e70}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="include\Log\LogSystem.cpp">
+      <Filter>头文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\dependence\imgui-1.91.9-Docking\imgui-1.91.9\imgui.cpp">
+      <Filter>源文件\ingui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\dependence\imgui-1.91.9-Docking\imgui-1.91.9\imgui_demo.cpp">
+      <Filter>源文件\ingui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\dependence\imgui-1.91.9-Docking\imgui-1.91.9\imgui_draw.cpp">
+      <Filter>源文件\ingui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\dependence\imgui-1.91.9-Docking\imgui-1.91.9\imgui_tables.cpp">
+      <Filter>源文件\ingui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\dependence\imgui-1.91.9-Docking\imgui-1.91.9\imgui_widgets.cpp">
+      <Filter>源文件\ingui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\dependence\imgui-sfml-3.0\imgui-SFML.cpp">
+      <Filter>源文件\ingui-sfml</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\Log\LogSystem.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\LsFileManager\PathConfig.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\LsFileManager\FileManager.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\includeAll.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\fileTools.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\dependence\imgui-1.91.9-Docking\imgui-1.91.9\imconfig.h">
+      <Filter>头文件\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\dependence\imgui-1.91.9-Docking\imgui-1.91.9\imgui.h">
+      <Filter>头文件\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\dependence\imgui-1.91.9-Docking\imgui-1.91.9\imstb_rectpack.h">
+      <Filter>头文件\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\dependence\imgui-1.91.9-Docking\imgui-1.91.9\imstb_textedit.h">
+      <Filter>头文件\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\dependence\imgui-1.91.9-Docking\imgui-1.91.9\imstb_truetype.h">
+      <Filter>头文件\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\dependence\imgui-sfml-3.0\imconfig-SFML.h">
+      <Filter>头文件\imgui-sfml</Filter>
+    </ClInclude>
+    <ClInclude Include="..\dependence\imgui-sfml-3.0\imgui-SFML.h">
+      <Filter>头文件\imgui-sfml</Filter>
+    </ClInclude>
+    <ClInclude Include="include\simulater_main.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\simulater_UI.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\PropertySystem.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\LsSimpleDraw\SimpleDraw.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\LsSimpleDraw\RatioView.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\LsSimpleDraw\LsSimpleDraw.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\LsSimpleDraw\Canvas.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\globalData.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
