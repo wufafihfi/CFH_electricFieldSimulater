@@ -1,9 +1,9 @@
 # CFH_electricFieldSimulater
 
--一个简单的电场模拟器
+- 一个简单的电场模拟器
 
 ## 此项目使用了一下开源库
--唯一一个没在项目文件里的外部库是VCPKG里的sfml:x86-windows 3.0.1
+- 唯一一个没在项目文件里的外部库是VCPKG里的sfml:x86-windows 3.0.1
 
 - **SFML 3.0.1** - 采用 zlib/libpng 许可证  
   官网：https://www.sfml-dev.org/
