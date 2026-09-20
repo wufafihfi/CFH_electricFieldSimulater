@@ -1,6 +1,7 @@
 # CFH_electricFieldSimulater
 
 - 一个简单的电场模拟器
+- 我使用AI辅助学习编程的项目之一
 
 ## 此项目使用了一下开源库
 - 唯一一个没在项目文件里的外部库是VCPKG里的sfml:x86-windows 3.0.1
