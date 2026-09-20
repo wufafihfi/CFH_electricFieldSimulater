@@ -425,6 +425,229 @@ public:
         }
     }
 
+    void extractZeroPotentialLines(
+        const std::vector<std::vector<globalData::FieldPoint>>& _FieldData,
+        const sf::Vector2u& imageSize,
+        float zeroValue,
+        std::vector<std::pair<sf::Vector2f, sf::Vector2f>>& segments
+    ) {
+        segments.clear();
+
+        for (unsigned int row = 0; row < imageSize.y - 1; ++row) {
+            for (unsigned int col = 0; col < imageSize.x - 1; ++col) {
+                // 4 个角的电势
+                float v00 = _FieldData[row][col].potential - zeroValue;  // 左上
+                float v10 = _FieldData[row][col + 1].potential - zeroValue;  // 右上
+                float v01 = _FieldData[row + 1][col].potential - zeroValue;  // 左下
+                float v11 = _FieldData[row + 1][col + 1].potential - zeroValue;  // 右下
+
+                // 符号判断
+                bool s00 = v00 > 0.0f;
+                bool s10 = v10 > 0.0f;
+                bool s01 = v01 > 0.0f;
+                bool s11 = v11 > 0.0f;
+
+                // 如果全同号，跳过
+                if (s00 == s10 && s10 == s01 && s01 == s11) continue;
+
+                // 插值函数：在 v1 和 v2 之间找 V = 0 的位置
+                auto interp = [](float v1, float v2, float p1, float p2) -> float {
+                    if (std::abs(v2 - v1) < 1e-10f) return (p1 + p2) * 0.5f;
+                    float t = v1 / (v1 - v2);
+                    return p1 + t * (p2 - p1);
+                    };
+
+                // 4 条边上的交点
+                bool hasTop = (s00 != s10);  // 上边：v00 到 v10
+                bool hasBottom = (s01 != s11);  // 下边：v01 到 v11
+                bool hasLeft = (s00 != s01);  // 左边：v00 到 v01
+                bool hasRight = (s10 != s11);  // 右边：v10 到 v11
+
+                // 计算交点坐标
+                float topX = hasTop ? interp(v00, v10, (float)col, (float)(col + 1)) : 0.0f;
+                float botX = hasBottom ? interp(v01, v11, (float)col, (float)(col + 1)) : 0.0f;
+                float leftY = hasLeft ? interp(v00, v01, (float)row, (float)(row + 1)) : 0.0f;
+                float rightY = hasRight ? interp(v10, v11, (float)row, (float)(row + 1)) : 0.0f;
+
+                float topY = (float)row;
+                float botY = (float)(row + 1);
+                float leftX = (float)col;
+                float rightX = (float)(col + 1);
+
+                // 根据符号变化，连接交点
+                // 简化版：只处理"两条边有交点"的情况
+                int count = hasTop + hasBottom + hasLeft + hasRight;
+
+                if (count == 2) {
+                    // 找到两个交点
+                    std::vector<sf::Vector2f> points;
+                    if (hasTop)    points.emplace_back(topX, topY);
+                    if (hasBottom) points.emplace_back(botX, botY);
+                    if (hasLeft)   points.emplace_back(leftX, leftY);
+                    if (hasRight)  points.emplace_back(rightX, rightY);
+
+                    if (points.size() == 2) {
+                        segments.emplace_back(points[0], points[1]);
+                    }
+                }
+                // count == 4 的情况（鞍点）需要特殊处理，这里简化跳过
+            }
+        }
+    }
+    // 提取指定行范围内的等势线段
+    void extractMultiplePotentialLinesBlock(
+        const std::vector<std::vector<globalData::FieldPoint>>& _FieldData,
+        const sf::Vector2u& imageSize,
+        const std::vector<float>& lineValues,
+        unsigned int startRow,
+        unsigned int endRow,
+        std::vector<std::vector<std::pair<sf::Vector2f, sf::Vector2f>>>& outSegments
+    ) {
+        int numLines = static_cast<int>(lineValues.size());
+        outSegments.resize(numLines);
+
+        for (unsigned int row = startRow; row < endRow; ++row) {
+            for (unsigned int col = 0; col < imageSize.x - 1; ++col) {
+                float v00 = _FieldData[row][col].potential;
+                float v10 = _FieldData[row][col + 1].potential;
+                float v01 = _FieldData[row + 1][col].potential;
+                float v11 = _FieldData[row + 1][col + 1].potential;
+
+                for (int i = 0; i < numLines; ++i) {
+                    float target = lineValues[i];
+                    float d00 = v00 - target;
+                    float d10 = v10 - target;
+                    float d01 = v01 - target;
+                    float d11 = v11 - target;
+
+                    bool s00 = d00 > 0;
+                    bool s10 = d10 > 0;
+                    bool s01 = d01 > 0;
+                    bool s11 = d11 > 0;
+
+                    if (s00 == s10 && s10 == s01 && s01 == s11) continue;
+
+                    auto interp = [](float d1, float d2, float p1, float p2) -> float {
+                        if (std::abs(d2 - d1) < 1e-10f) return (p1 + p2) * 0.5f;
+                        float t = d1 / (d1 - d2);
+                        return p1 + t * (p2 - p1);
+                        };
+
+                    bool hasTop = (s00 != s10);
+                    bool hasBottom = (s01 != s11);
+                    bool hasLeft = (s00 != s01);
+                    bool hasRight = (s10 != s11);
+
+                    std::vector<sf::Vector2f> points;
+                    if (hasTop)    points.emplace_back(interp(d00, d10, (float)col, (float)(col + 1)), (float)row);
+                    if (hasBottom) points.emplace_back(interp(d01, d11, (float)col, (float)(col + 1)), (float)(row + 1));
+                    if (hasLeft)   points.emplace_back((float)col, interp(d00, d01, (float)row, (float)(row + 1)));
+                    if (hasRight)  points.emplace_back((float)(col + 1), interp(d10, d11, (float)row, (float)(row + 1)));
+
+                    if (points.size() == 2) {
+                        outSegments[i].emplace_back(points[0], points[1]);
+                    }
+                    else if (points.size() == 4) {
+                        float vCenter = (v00 + v10 + v01 + v11) * 0.25f - target;
+                        bool sCenter = vCenter > 0;
+                        if (sCenter == s00) {
+                            outSegments[i].emplace_back(points[0], points[2]);
+                            outSegments[i].emplace_back(points[1], points[3]);
+                        }
+                        else {
+                            outSegments[i].emplace_back(points[0], points[3]);
+                            outSegments[i].emplace_back(points[1], points[2]);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    void extractMultiplePotentialLines(
+        const std::vector<std::vector<globalData::FieldPoint>>& _FieldData,
+        const sf::Vector2u& imageSize,
+        float minValue, float maxValue,
+        int numLines,
+        int numThreads,
+        std::vector<std::vector<std::pair<sf::Vector2f, sf::Vector2f>>>& allSegments
+    ) {
+        allSegments.clear();
+        allSegments.resize(numLines);
+
+        // 预计算等势线值
+        std::vector<float> lineValues(numLines);
+        float step = (maxValue - minValue) / (numLines + 1);
+        for (int i = 0; i < numLines; ++i) {
+            lineValues[i] = minValue + step * (i + 1);
+        }
+
+        // 分块
+        unsigned int blockRows = (imageSize.y - 1) / numThreads;
+        if (blockRows < 1) blockRows = 1;
+
+        // 每个线程的独立输出
+        std::vector<std::vector<std::vector<std::pair<sf::Vector2f, sf::Vector2f>>>> threadOutputs(numThreads);
+
+        std::vector<std::future<void>> futures;
+        for (int i = 0; i < numThreads; ++i) {
+            unsigned int startRow = i * blockRows;
+            unsigned int endRow = (i == numThreads - 1) ? (imageSize.y - 1) : (i + 1) * blockRows;
+            if (startRow >= imageSize.y - 1) break;
+
+            futures.push_back(globalData::g_threadPool->enqueue(
+                [&, i, startRow, endRow]() {
+                    extractMultiplePotentialLinesBlock(
+                        _FieldData, imageSize, lineValues,
+                        startRow, endRow,
+                        threadOutputs[i]
+                    );
+                }));
+        }
+
+        for (auto& f : futures) f.wait();
+
+        // 合并所有线程的输出
+        for (int t = 0; t < numThreads; ++t) {
+            for (int i = 0; i < numLines; ++i) {
+                if (i < threadOutputs[t].size()) {
+                    allSegments[i].insert(
+                        allSegments[i].end(),
+                        threadOutputs[t][i].begin(),
+                        threadOutputs[t][i].end()
+                    );
+                }
+            }
+        }
+    }
+    void drawZeroPotentialLines(
+        const std::vector<std::pair<sf::Vector2f, sf::Vector2f>>& segments,
+        sf::Color color = sf::Color::Red
+    ) {
+        sf::VertexArray lines(sf::PrimitiveType::Lines);
+
+        for (const auto& seg : segments) {
+            lines.append(sf::Vertex({ seg.first, color }));
+            lines.append(sf::Vertex({ seg.second, color }));
+        }
+
+        target->draw(lines);
+    }
+    void drawMultiplePotentialLines(
+        const std::vector<std::vector<std::pair<sf::Vector2f, sf::Vector2f>>>& allSegments,
+        sf::Color& color
+    ) {
+        sf::VertexArray lines(sf::PrimitiveType::Lines);
+
+        for (size_t i = 0; i < allSegments.size(); ++i) {
+            for (const auto& seg : allSegments[i]) {
+                lines.append(sf::Vertex({ seg.first, color }));
+                lines.append(sf::Vertex({ seg.second, color }));
+            }
+        }
+
+        target->draw(lines);
+    }
+
 private:
     sf::Texture m_cachedTexture;
 public:

@@ -74,6 +74,9 @@ namespace simulater_main {
 				sf::Vector2f point(col, row);
 
 				for (const auto& charge : chargesRef) {
+					if (!charge.available) {
+						continue;
+					}
 					globalData::FieldPoint result = computeFieldAndPotential(charge, point);
 					pData.electricField += result.electricField;
 					pData.potential += result.potential;
@@ -165,6 +168,7 @@ namespace simulater_main {
 
 		globalData::Charge charge_1 = {
 			chargeID,
+			false,
 			{ 
 				static_cast<float>(gridSize.x) / 2.0f,
 				static_cast<float>(gridSize.y) / 2.0f
@@ -175,16 +179,18 @@ namespace simulater_main {
 		charges.push_back(charge_1);
 		globalData::Charge charge_2 = {
 			chargeID,
+			true,
 			{
 				static_cast<float>(gridSize.x) / 3.0f,
 				static_cast<float>(gridSize.y) / 3.6f
 			},
-			1e-3
+			-1e-3
 		};
 		chargeID++;
-		//charges.push_back(charge_2);
+		charges.push_back(charge_2);
 		globalData::Charge charge_3 = {
 			chargeID,
+			true,
 			{
 				static_cast<float>(gridSize.x) / 3.0f,
 				static_cast<float>(gridSize.y) / 1.3f,
@@ -192,12 +198,13 @@ namespace simulater_main {
 			1e-3
 		};
 		chargeID++;
-		//charges.push_back(charge_3);
+		charges.push_back(charge_3);
 		int R = 100;
 		for (double i = 0; i < 2*M_PI ; i += 2 * M_PI / 20) {
 			sf::Vector2f offset = sf::Vector2f(R*cos(i),R*sin(i));
 			globalData::Charge charge_f = {
 				chargeID,
+				true,
 				{
 					static_cast<float>(gridSize.x) / 2.0f + offset.x,
 					static_cast<float>(gridSize.y) / 2.0f + offset.y,
@@ -205,7 +212,7 @@ namespace simulater_main {
 				-6e-4
 			};
 			chargeID++;
-			charges.push_back(charge_f);
+			//charges.push_back(charge_f);
 		}
 	}
 
@@ -217,7 +224,12 @@ namespace simulater_main {
 		// simulaterCanvas
 		for (auto& charge : charges) {
 			if (charge.id == 0) {
-				charge.position = globalData::mousePos_mainCanvas_imgui;
+				charge.available = globalData::is_put_mouseCharge;
+				charge.quantity = globalData::mouseCharge_quantity;
+				if(charge.available)
+				{
+					charge.position = globalData::mousePos_mainCanvas_imgui;
+				}
 			}
 		}
 
@@ -245,6 +257,7 @@ namespace simulater_main {
 		);
 		electricPotentialDraw.drawTexture(electricPotentialDraw.m_heatmapTexture, 0.0f, 0.0f);
 
+		// 测量矢量线
 		if(globalData::is_show_electric_field_vector)
 		{
 			mainDraw.electricFieldVector(
@@ -256,12 +269,39 @@ namespace simulater_main {
 			);
 		}
 
+		// 坐标轴
 		if(globalData::is_show_coordinateAxis)
 		{
 			mainDraw.setColor(0, 255, 0);
 			mainDraw.line(gridSize.x / 2, gridSize.y / 2, gridSize.x, gridSize.y / 2);
 			mainDraw.setColor(255, 0, 0);
 			mainDraw.line(gridSize.x / 2, gridSize.y / 2, gridSize.x / 2, gridSize.y);
+		}
+
+		// 等势线
+		if (globalData::is_show_potential_line) {
+			std::vector<std::pair<sf::Vector2f, sf::Vector2f>> segments;
+			electricPotentialDraw.extractZeroPotentialLines(
+				fieldData, 
+				gridSize, 
+				globalData::V_equalV_value, 
+				segments
+			);
+			electricPotentialDraw.drawZeroPotentialLines(
+				segments, 
+				globalData::zero_line_color
+			);
+		}
+		if (globalData::is_show_multi_potential_line) {
+			std::vector<std::vector<std::pair<sf::Vector2f, sf::Vector2f>>> allSegments;
+			electricPotentialDraw.extractMultiplePotentialLines(
+				fieldData, gridSize,
+				-500000.0f, 500000.0f,
+				globalData::potential_line_num,
+				globalData::target_numThreads,
+				allSegments
+			);
+			electricPotentialDraw.drawMultiplePotentialLines(allSegments, globalData::zero_line_color);
 		}
 
 		mainCanvas.getTexture().display();

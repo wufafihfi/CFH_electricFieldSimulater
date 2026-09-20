@@ -3,6 +3,7 @@
 namespace globalData {
 	struct Charge {
 		int id;
+		bool available = true;
 		sf::Vector2f position;
 		float quantity;
 	};
@@ -25,6 +26,9 @@ namespace globalData {
 	float E_Heatmap_gamma = 0.3f;
 	float E_Heatmap_Emax = 5000000.0f;
 
+	bool is_put_mouseCharge = false;
+	float mouseCharge_quantity = -1e-4;
+
 	bool is_show_electric_field_vector = false;
 	float E_line_power = 0.8f;
 	float E_line_spacing = 50.0f;
@@ -36,4 +40,9 @@ namespace globalData {
 	float potential_layer_alpha = 0.5f;
 	float V_Heatmap_gamma = 0.3f;
 	float V_Heatmap_Vmax = 5000000.0f;
+	bool is_show_potential_line = false;
+	float V_equalV_value = 0.0f;
+	sf::Color zero_line_color = sf::Color::Red;
+	bool is_show_multi_potential_line = false;
+	int potential_line_num = 10;
 }

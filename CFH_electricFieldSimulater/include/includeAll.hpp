@@ -10,6 +10,7 @@
 #include <atomic>
 #include <chrono>
 #include <psapi.h>
+#include <cmath>
 
 #include "Thread_tools/ThreadPool.h"
 #include "PropertySystem.h"

@@ -211,25 +211,67 @@ namespace simulater_UI {
 
 		ImGui::Checkbox(u8"显示坐标轴", &globalData::is_show_coordinateAxis);
 
+        ImGui::Checkbox(u8"鼠标点电荷", &globalData::is_put_mouseCharge);
+        if (globalData::is_put_mouseCharge) {
+            ImGui::Text(u8"电荷量: %g C", globalData::mouseCharge_quantity);
+            ImGui::SliderFloat(u8"##mouseCharge_quantity_slider", &globalData::mouseCharge_quantity, -1e-2, 1e-2);
+        }
+
         ImGui::Checkbox(u8"显示电势叠加层", &globalData::is_show_potential_layer);
         if (globalData::is_show_potential_layer) {
+            ImGui::Indent(20.0f);
+
             ImGui::Text(u8"叠加层透明度(alpha = 0 全透)");
             ImGui::SliderFloat(u8"##Vimage_alpha_slider", &globalData::potential_layer_alpha, 0.0f, 1.0f);
             ImGui::Text(u8"灰度图伽马值((V - V_min / (V_max - V_min) )^gamma)");
             ImGui::SliderFloat(u8"##V_slider", &globalData::V_Heatmap_gamma, 0.1f, 4.0f);
             ImGui::Text(u8"灰度图颜色映射范围 Vmax = %0.1f ([-Vmax,Vmax])", globalData::V_Heatmap_Vmax);
             ImGui::SliderFloat(u8"##Vmax_slider", &globalData::V_Heatmap_Vmax, 1.0f, 5000000.0f);
+        
+            ImGui::Checkbox(u8"显示等势线", &globalData::is_show_potential_line);
+            if (globalData::is_show_potential_line) {
+                ImGui::Indent(20.0f);
+
+                ImGui::Checkbox(u8"显示多个等势线", &globalData::is_show_multi_potential_line);
+                if (globalData::is_show_multi_potential_line) {
+                    globalData::V_equalV_value = 0.0f;
+
+                    ImGui::Text(u8"等势线数量");
+                    ImGui::SliderInt(u8"##equalV_line_num_slider", &globalData::potential_line_num, 1, 100);
+                }
+                else
+                {
+                    ImGui::Text(u8"等势线电势值");
+                    ImGui::SliderFloat(u8"##equalV_value_slider", &globalData::V_equalV_value, -5000000.0f, 5000000.0f);
+                }
+                static float zero_line_color_f[3] = { 1.0f, 0.0f, 0.0f };
+                if (ImGui::ColorEdit3(u8"等势线颜色", zero_line_color_f)) {
+                    globalData::zero_line_color = sf::Color(
+                        static_cast<uint8_t>(zero_line_color_f[0] * 255.0f),
+                        static_cast<uint8_t>(zero_line_color_f[1] * 255.0f),
+                        static_cast<uint8_t>(zero_line_color_f[2] * 255.0f)
+                    );
+                }
+
+                ImGui::Unindent(20.0f);
+            }
+
+            ImGui::Unindent(20.0f);
         }
 
 		ImGui::Checkbox(u8"分布式场强矢量线", &globalData::is_show_electric_field_vector);
 		if (globalData::is_show_electric_field_vector) {
-			ImGui::Text(u8"测量点间距");
+            ImGui::Indent(20.0f);
+
+            ImGui::Text(u8"测量点间距");
 			ImGui::SliderFloat(u8"##slider2", &globalData::E_line_spacing, 5.0f, 100.0f);
 			ImGui::Text(u8"线长衰减指数(E / |E|^power)");
 			ImGui::SliderFloat(u8"##slider3", &globalData::E_line_power, 0.1f, 2.0f);
 			ImGui::Text(u8"测量点指示圆半径");
 			ImGui::SliderFloat(u8"##slider4", &globalData::E_line_circleR, 0.5f, 3.0f);
-		}
+		    
+            ImGui::Unindent(20.0f);
+        }
 
 		ImGui::End();
 	}
