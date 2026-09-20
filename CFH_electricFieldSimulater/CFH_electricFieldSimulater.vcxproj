@@ -92,14 +92,17 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalIncludeDirectories>$(SolutionDir)dependence\imgui-1.91.9-Docking\imgui-1.91.9;C:\Users\NewAdmin\vcpkg\installed\x86-windows-static\include;$(SolutionDir)dependence\imgui-sfml-3.0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>C:\Users\NewAdmin\vcpkg\installed\x86-windows\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>sfml-graphics.lib;sfml-window.lib;sfml-system.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>sfml-graphics.lib;sfml-window.lib;sfml-system.lib;opengl32.lib;Psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /y /d "$(ProjectDir)..\DLL\*.dll" "$(TargetDir)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -145,6 +148,7 @@
     <ClInclude Include="..\dependence\imgui-1.91.9-Docking\imgui-1.91.9\imstb_truetype.h" />
     <ClInclude Include="..\dependence\imgui-sfml-3.0\imconfig-SFML.h" />
     <ClInclude Include="..\dependence\imgui-sfml-3.0\imgui-SFML.h" />
+    <ClInclude Include="include\dllChecker.h" />
     <ClInclude Include="include\fileTools.h" />
     <ClInclude Include="include\globalData.h" />
     <ClInclude Include="include\includeAll.hpp" />
@@ -158,6 +162,7 @@
     <ClInclude Include="include\PropertySystem.h" />
     <ClInclude Include="include\simulater_main.h" />
     <ClInclude Include="include\simulater_UI.h" />
+    <ClInclude Include="include\Thread_tools\ThreadPool.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

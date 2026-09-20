@@ -1,26 +1,22 @@
-#pragma once
+ï»¿#pragma once
 
 /*
-* ÏÂÒ»²½£º
-* ³ÌĞòÄÚÖØÖÃÄ£ÄâÆ÷£¬ĞŞ¸ÄÄ£Äâ»·¾³´óĞ¡
-* Ìí¼ÓºÍ¿ØÖÆ×Ô¶¨ÒåµçºÉ(LUA½Å±¾ºÍJSON³¡¾°±£´æ)
-* ÏÔÊ¾µçºÉĞÅÏ¢
-* ÄÜ±£´æÄ£ÄâÍ¼Ïñ²¢¸½´øÊı¾İËµÃ÷
-* ĞÔÄÜ¾¡¿ÉÄÜÓÅ»¯µÄ¸üºÃ
+* ä¸‹ä¸€æ­¥ï¼š
+* æ•°æ®å åŠ å±‚ å®Œæˆè¿›åº¦:%50
+* ç¨‹åºå†…é‡ç½®æ¨¡æ‹Ÿå™¨ï¼Œä¿®æ”¹æ¨¡æ‹Ÿç¯å¢ƒå¤§å°
+* æ·»åŠ å’Œæ§åˆ¶è‡ªå®šä¹‰ç”µè·(LUAè„šæœ¬å’ŒJSONåœºæ™¯ä¿å­˜)
+* æ˜¾ç¤ºç”µè·ä¿¡æ¯
+* èƒ½ä¿å­˜æ¨¡æ‹Ÿå›¾åƒå¹¶é™„å¸¦æ•°æ®è¯´æ˜
+* æ€§èƒ½å°½å¯èƒ½ä¼˜åŒ–çš„æ›´å¥½ï¼ˆæ¯ä¸€æ­¥éƒ½è¦åšåˆ°ï¼‰
 */
 
 namespace simulater_main {
-	struct Charge {
-		int id;
-		sf::Vector2f position;
-		float quanity;
-	};
-	// ¼ÆËãÇø¿é
+	// æ¨¡æ‹Ÿç¯å¢ƒåŒºå— è¡Œä¼˜å…ˆ
 	struct Block {
-		unsigned int startX;
-		unsigned int endX;
-		unsigned int startY;
-		unsigned int endY;
+		unsigned int startRow;
+		unsigned int endRow;
+		unsigned int startCol;
+		unsigned int endCol;
 	};
 
 	sf::RenderWindow* window;
@@ -28,7 +24,9 @@ namespace simulater_main {
 
 	Canvas mainCanvas;
 	SimpleDraw mainDraw;
-	RatioView mainView;
+
+	Canvas electricPotentialCanvas;
+	SimpleDraw electricPotentialDraw;
 
 	// simulater data
 	constexpr double kCoulomb = 8.9875517923e9;
@@ -36,74 +34,96 @@ namespace simulater_main {
 	sf::Vector2u gridSize;
 
 	int chargeID = 0;
-	std::vector<Charge> charges;
-	std::vector <std::vector<sf::Vector2f>> fieldMagnitude;
+	std::vector<globalData::Charge> charges;
+	std::vector<std::vector<globalData::FieldPoint>> fieldData;
 
-	// ¶àÏß³Ì
+	// å¤šçº¿ç¨‹
 	std::atomic<int> completedBlocks{ 0 };
 	int totalBlocks = 0;
 
-	sf::Vector2f electricFieldVector(Charge charge,sf::Vector2f point) {
-		sf::Vector2f distance = point - charge.position;
-		float rSquared = distance.lengthSquared();
+	inline globalData::FieldPoint computeFieldAndPotential(const globalData::Charge& charge, const sf::Vector2f& point) {
+		sf::Vector2f delta = point - charge.position;
+		float rSquared = delta.lengthSquared();
 
-		float magnitude = static_cast<float>(kCoulomb) * charge.quanity / rSquared;
-		return magnitude * distance.normalized();
+		if (rSquared < 1e-10f) {
+			return { sf::Vector2f(0.0f, 0.0f), 0.0f };
+		}
+
+		float r = std::sqrt(rSquared);
+		float invR = 1.0f / r;
+		float invR2 = invR * invR;
+		float invR3 = invR2 * invR;
+
+		float kQ = static_cast<float>(kCoulomb) * charge.quantity;
+
+		globalData::FieldPoint result;
+		result.electricField = kQ * invR3 * delta;  // kQ/rÂ² * (delta/r)
+		result.potential = kQ * invR;               // kQ/r
+		return result;
 	}
 
+	// x = col, y = row
 	void computeBlock(
-		const Block& block, 
-		const std::vector<Charge>& chargesRef,
-		std::vector<std::vector<sf::Vector2f>>& fieldData
+		const Block& block,
+		const std::vector<globalData::Charge>& chargesRef,
+		std::vector<std::vector<globalData::FieldPoint>>& _fieldData
 	) {
-		for (int X = block.startX; X < block.endX; X++) {
-			for (int Y = block.startY; Y < block.endY; Y++) {
-				sf::Vector2f total_E = sf::Vector2f(0, 0);
-				sf::Vector2f point = sf::Vector2f(X,Y);
+		for (int row = block.startRow; row < block.endRow; row++) {
+			for (int col = block.startCol; col < block.endCol; col++) {
+				globalData::FieldPoint pData = { sf::Vector2f(0,0),0.0f };
+				sf::Vector2f point(col, row);
+
 				for (const auto& charge : chargesRef) {
-					total_E = total_E + electricFieldVector(charge, point);
+					globalData::FieldPoint result = computeFieldAndPotential(charge, point);
+					pData.electricField += result.electricField;
+					pData.potential += result.potential;
 				}
-				fieldData[X][Y] = total_E;
+
+				_fieldData[row][col] = pData;
 			}
 		}
 	}
 
-	void makeFieldMagnitude(sf::Vector2u _gridSize, int target_numThreads = 10) {
-		int numThreads = 1;
-		if (numThreads == 0) {
-			numThreads = static_cast<int>(std::thread::hardware_concurrency());
-			if (numThreads >= target_numThreads && !(target_numThreads < 1)) {
-				numThreads = target_numThreads;
-			}
-			if (numThreads == 0) {
-				numThreads = 4;
-			}
+	void makeFieldValue(sf::Vector2u _gridSize, int target_numThreads = 10) {
+		if (fieldData.size() != _gridSize.y ||
+			fieldData.empty() ||
+			fieldData[0].size() != _gridSize.x) {
+			fieldData.resize(_gridSize.y,
+				std::vector<globalData::FieldPoint>(_gridSize.x));
 		}
-		
-		fieldMagnitude.clear();
-		fieldMagnitude.resize(_gridSize.x, std::vector<sf::Vector2f>(_gridSize.y, sf::Vector2f(0,0)));
 
 		std::vector<Block> blocks;
-		unsigned int blockRows = _gridSize.y / numThreads;
+		unsigned int blockRows = _gridSize.y / target_numThreads;
 
-		for (int i = 0; i < numThreads; ++i) {
+		for (int i = 0; i < target_numThreads; ++i) {
 			Block block;
-			block.startX = 0;
-			block.endX = _gridSize.x;
-			block.startY = i * blockRows;
-			block.endY = (i == numThreads - 1) ? _gridSize.y : (i + 1) * blockRows;
+			block.startCol = 0;
+			block.endCol = _gridSize.x;
+			block.startRow = i * blockRows;
+			block.endRow = (i == target_numThreads - 1) ? _gridSize.y : (i + 1) * blockRows;
 			blocks.push_back(block);
 		}
 
-		std::vector<std::thread> threads;
+		std::vector<std::future<void>> futures;
 		for (const auto& block : blocks) {
-			threads.emplace_back(computeBlock, block, std::cref(charges), std::ref(fieldMagnitude));
+			futures.push_back(globalData::g_threadPool->enqueue([&, block]() {
+				computeBlock(block, charges, fieldData);
+				}));
 		}
+		
+		for (auto& f : futures) {
+			f.wait();
+		}
+	}
 
-		for (auto& t : threads) {
-			if (t.joinable()) {
-				t.join();
-			}
+	void limitThreadNum(int& target_numThreads, bool initMode = false) {
+		globalData::max_numThreads = static_cast<int>(std::thread::hardware_concurrency());
+
+		if (target_numThreads < 3) {
+			target_numThreads = 3;
+		}
+		if ((target_numThreads > globalData::max_numThreads)|| initMode) {
+			target_numThreads = globalData::max_numThreads;
 		}
 	}
 
@@ -123,12 +143,27 @@ namespace simulater_main {
 		sf::Vector2 window_size = window->getSize();
 		mainCanvas.create(gridSize.x, gridSize.y);
 		mainDraw.setSimpleDraw(mainCanvas);
-		mainView.setRatioView(mainCanvas.getSize());
 
-		// È«¾ÖÊı¾İÒıÓÃ
+		electricPotentialCanvas.create(gridSize.x, gridSize.y);
+		electricPotentialDraw.setSimpleDraw(electricPotentialCanvas);
+
+		if (fieldData.size() != gridSize.y ||
+			fieldData.empty() ||
+			fieldData[0].size() != gridSize.x) {
+			fieldData.resize(gridSize.y,
+				std::vector<globalData::FieldPoint>(gridSize.x));
+		}
+
+		// çº¿ç¨‹æ± åˆå§‹åŒ–
+		limitThreadNum(globalData::target_numThreads,true);
+		globalData::g_threadPool = std::make_unique<ThreadPool>(globalData::target_numThreads);
+
+		// å…¨å±€æ•°æ®å¼•ç”¨
+		globalData::charges = &charges;
 		globalData::mainCanvas_ptr = &mainCanvas;
+		globalData::electricPotentialCanvas_ptr = &electricPotentialCanvas;
 
-		Charge charge_1 = { 
+		globalData::Charge charge_1 = {
 			chargeID,
 			{ 
 				static_cast<float>(gridSize.x) / 2.0f,
@@ -138,30 +173,30 @@ namespace simulater_main {
 		};
 		chargeID++;
 		charges.push_back(charge_1);
-		Charge charge_2 = {
+		globalData::Charge charge_2 = {
 			chargeID,
 			{
 				static_cast<float>(gridSize.x) / 3.0f,
-				static_cast<float>(gridSize.y) / 3.0f
+				static_cast<float>(gridSize.y) / 3.6f
 			},
 			1e-3
 		};
 		chargeID++;
-		charges.push_back(charge_2);
-		Charge charge_3 = {
+		//charges.push_back(charge_2);
+		globalData::Charge charge_3 = {
 			chargeID,
 			{
 				static_cast<float>(gridSize.x) / 3.0f,
-				static_cast<float>(gridSize.y) / 1.5f,
+				static_cast<float>(gridSize.y) / 1.3f,
 			},
 			1e-3
 		};
 		chargeID++;
-		charges.push_back(charge_3);
+		//charges.push_back(charge_3);
 		int R = 100;
 		for (double i = 0; i < 2*M_PI ; i += 2 * M_PI / 20) {
 			sf::Vector2f offset = sf::Vector2f(R*cos(i),R*sin(i));
-			Charge charge_f = {
+			globalData::Charge charge_f = {
 				chargeID,
 				{
 					static_cast<float>(gridSize.x) / 2.0f + offset.x,
@@ -170,15 +205,14 @@ namespace simulater_main {
 				-6e-4
 			};
 			chargeID++;
-			//charges.push_back(charge_f);
+			charges.push_back(charge_f);
 		}
 	}
 
-	//sf::Vector2f mousePos_mainCanvas = sf::Vector2f(0, 0);
 	void Render() {
-		//mousePos_mainCanvas = GetCanvasPosition(window->mapPixelToCoords(sf::Mouse::getPosition(*window)), &mainCanvas);
-
+		limitThreadNum(globalData::target_numThreads);
 		mainCanvas.clear();
+		electricPotentialCanvas.clear();
 
 		// simulaterCanvas
 		for (auto& charge : charges) {
@@ -187,18 +221,34 @@ namespace simulater_main {
 			}
 		}
 
-		makeFieldMagnitude(gridSize,0);
-		sf::Image heatmapImage = mainDraw.generateHeatmapImage(
-			fieldMagnitude, 
+		makeFieldValue(gridSize, globalData::target_numThreads);
+
+		mainDraw.generateHeatmapImage(
+			fieldData,
 			gridSize,
-			5000000,
-			globalData::E_Heatmap_gama);
-		mainDraw.drawImage(heatmapImage, 0.0f, 0.0f);
+			0, globalData::E_Heatmap_Emax,
+			globalData::E_Heatmap_gamma,
+			globalData::target_numThreads,
+			[](float n) { return mainDraw.vibrantColorMap(n); },
+			false
+		);
+		mainDraw.drawTexture(mainDraw.m_heatmapTexture, 0.0f, 0.0f);
+
+		electricPotentialDraw.generateHeatmapImage(
+			fieldData,
+			gridSize,
+			globalData::V_Heatmap_Vmax * -1, globalData::V_Heatmap_Vmax,
+			globalData::V_Heatmap_gamma,
+			globalData::target_numThreads,
+			[](float n) { return electricPotentialDraw.potentialColorMap(n); },
+			true
+		);
+		electricPotentialDraw.drawTexture(electricPotentialDraw.m_heatmapTexture, 0.0f, 0.0f);
 
 		if(globalData::is_show_electric_field_vector)
 		{
 			mainDraw.electricFieldVector(
-				fieldMagnitude,
+				fieldData,
 				gridSize,
 				globalData::E_line_power,
 				globalData::E_line_spacing,
@@ -214,8 +264,7 @@ namespace simulater_main {
 			mainDraw.line(gridSize.x / 2, gridSize.y / 2, gridSize.x / 2, gridSize.y);
 		}
 
-		//mainView.applyTo(*window);
-
-		//mainCanvas.render(*window);
+		mainCanvas.getTexture().display();
+		electricPotentialCanvas.getTexture().display();
 	}
 }

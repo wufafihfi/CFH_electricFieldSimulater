@@ -113,5 +113,11 @@
     <ClInclude Include="include\globalData.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="include\dllChecker.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Thread_tools\ThreadPool.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

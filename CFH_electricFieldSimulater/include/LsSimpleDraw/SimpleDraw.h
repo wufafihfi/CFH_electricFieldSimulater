@@ -12,7 +12,7 @@
 #endif
 
 //###############学习#################
-// 阅 - 3遍
+// 阅 - 5遍
 //####################################
 
 class Canvas;
@@ -30,7 +30,7 @@ public:
         target = _window;
     }
 
-    // 绑定到画布（离屏缓冲区）
+    // 绑定到画布 (离屏缓冲区)
     void setSimpleDraw(Canvas& canvas){
         target = &canvas.getTexture();
     }
@@ -49,7 +49,7 @@ public:
         currentColor = sf::Color(r, g, b, a);
     }
 
-    // 线条粗细（SFML原生不支持，这里留作扩展）
+    // 线条粗细
     void setThickness(float thickness) { currentThickness = thickness; }
 
     // ========== 基础图形绘制 ==========
@@ -277,35 +277,72 @@ private:
     }
 
 public:
-    // 热力图绘制
-    sf::Image generateHeatmapImage(
-        const std::vector<std::vector<sf::Vector2f>>& fieldMagnitude,
+    sf::Image m_heatmapImage;
+    sf::Texture m_heatmapTexture;
+    // 热力图绘制 学阅6
+    void generateHeatmapImage(
+        const std::vector<std::vector<globalData::FieldPoint>>& _FieldData,
         const sf::Vector2u& imageSize,
-        float fixedMaxMagnitude,
-        float power = 0.3f
+        float minValue,
+        float maxValue,
+        float power,
+        int numThreads,
+        std::function<sf::Color(float)> colorMapper,
+        bool usePotential = false
     ) {
-        sf::Image image({ imageSize.x, imageSize.y }, sf::Color::Black);
-
-        float maxMagnitude = fixedMaxMagnitude;
-        float minMagnitude = 0.0f;
-
-        if (maxMagnitude < 1e-10f) maxMagnitude = 1.0f;
-
-        for (unsigned int X = 0; X < imageSize.x; ++X) {
-            for (unsigned int Y = 0; Y < imageSize.y; ++Y) {
-                float value = fieldMagnitude[X][Y].length();
-                float normalized = std::clamp(std::pow(value / maxMagnitude, power), 0.0f, 1.0f);
-                sf::Color color = vibrantColorMap(normalized);
-                image.setPixel({ X, Y }, color);
+        // 分配或复用
+        if (m_heatmapImage.getSize() != sf::Vector2u(imageSize.x, imageSize.y)) {
+            m_heatmapImage = sf::Image({ imageSize.x, imageSize.y }, sf::Color::Black);
+            if (!m_heatmapTexture.resize({ imageSize.x, imageSize.y })) {
+                return;
             }
         }
-        return image;
+
+        // 范围保护
+        float range = maxValue - minValue;
+        if (range < 1e-10f) range = 1.0f;
+
+        // 分块
+        unsigned int blockRows = imageSize.y / numThreads;
+        if (blockRows < 1) blockRows = 1;
+
+        std::vector<std::future<void>> futures;
+        for (int i = 0; i < numThreads; ++i) {
+            unsigned int startRow = i * blockRows;
+            unsigned int endRow = (i == numThreads - 1) ? imageSize.y : (i + 1) * blockRows;
+            if (startRow >= imageSize.y) break;
+
+            futures.push_back(globalData::g_threadPool->enqueue(
+                [&, startRow, endRow, colorMapper, usePotential, minValue, range, power]() {
+                    for (unsigned int row = startRow; row < endRow; ++row) {
+                        for (unsigned int col = 0; col < imageSize.x; ++col) {
+                            float value = usePotential
+                                ? _FieldData[row][col].potential
+                                : _FieldData[row][col].electricField.length();
+
+                            // 归一化到 [0, 1]
+                            value = std::clamp(value, minValue, maxValue);
+                            float normalized = (value - minValue) / range;
+
+                            // 非线性变换
+                            if (power != 1.0f) {
+                                normalized = std::pow(normalized, power);
+                            }
+
+                            normalized = std::clamp(normalized, 0.0f, 1.0f);
+                            m_heatmapImage.setPixel({ col, row }, colorMapper(normalized));
+                        }
+                    }
+                }));
+        }
+
+        for (auto& f : futures) f.wait();
+
+        m_heatmapTexture.update(m_heatmapImage);
     }
     // 颜色映射
     static sf::Color vibrantColorMap(float normalized) {
-        normalized = std::clamp(normalized, 0.0f, 1.0f);
-
-        const sf::Color colors[] = {
+        static const sf::Color colors[] = {
             {0, 0, 50},       // 深蓝
             {0, 0, 255},      // 蓝
             {0, 255, 255},    // 青
@@ -315,10 +352,31 @@ public:
             {255, 0, 0},      // 红
             {128, 0, 0}       // 深红
         };
-
         const int numColors = sizeof(colors) / sizeof(colors[0]);
-        float segment = 1.0f / (numColors - 1);
+        return mapColor(normalized, colors, numColors);
+    }
+    static sf::Color potentialColorMap(float normalized) {
+        if (normalized < 0.5f) {
+            // 负电势
+            float t = normalized / 0.5f;
+            uint8_t v = static_cast<uint8_t>(t * 128.0f);  // 0 → 128
+            return sf::Color(v, v, v);
+        }
+        else {
+            // 正电势
+            float t = (normalized - 0.5f) / 0.5f;
+            uint8_t v = static_cast<uint8_t>(128 + t * 127.0f);  // 128 → 255
+            return sf::Color(v, v, v);
+        }
+    }
+    static sf::Color mapColor(float normalized, const sf::Color* colors, int numColors) {
+        normalized = std::clamp(normalized, 0.0f, 1.0f);
 
+        if (numColors < 2) {
+            return colors[0];
+        }
+
+        float segment = 1.0f / (numColors - 1);
         int idx = static_cast<int>(normalized / segment);
         idx = std::clamp(idx, 0, numColors - 2);
 
@@ -334,7 +392,7 @@ public:
 
     // 分布式场强指示线绘制
     void electricFieldVector(
-        const std::vector<std::vector<sf::Vector2f>>& fieldMagnitude,
+        const std::vector<std::vector<globalData::FieldPoint>>& _FieldData,
         const sf::Vector2u& imageSize,
         float power = 0.6,
         float spacing = 50.0f,
@@ -342,19 +400,33 @@ public:
         sf::Color lineColor = sf::Color::White,
         sf::Color pointColor = sf::Color::Red
     ) {
-        sf::Vector2i lineCount(imageSize.x / spacing, imageSize.y / spacing);
-        for (unsigned int X = 1; X < lineCount.x; ++X) {
-            for (unsigned int Y = 1; Y < lineCount.y; ++Y) {
-                sf::Vector2f E = fieldMagnitude[int(X * spacing)][int(Y * spacing)];
-                E = E / pow(E.length(), power);
+        unsigned int cols = static_cast<unsigned int>(imageSize.x / spacing);
+        unsigned int rows = static_cast<unsigned int>(imageSize.y / spacing);
+
+        for (unsigned int row = 1; row < rows; ++row) {
+            for (unsigned int col = 1; col < cols; ++col) {
+                unsigned int x = col * spacing;
+                unsigned int y = row * spacing;
+
+                sf::Vector2f E = _FieldData[y][x].electricField;
+                float len = E.length();
+                if (len > 1e-10f) {
+                    E = E / std::pow(len, power);
+                }
+                else {
+                    E = sf::Vector2f(0.0f, 0.0f);
+                }
+
                 setColor(pointColor);
-                fillCircle(X * spacing, Y * spacing, circleR);
+                fillCircle(x, y, circleR);
                 setColor(lineColor);
-                line(X * spacing, Y * spacing, X * spacing + E.x, Y * spacing + E.y);
+                line(x, y, x + E.x, y + E.y);
             }
         }
     }
 
+private:
+    sf::Texture m_cachedTexture;
 public:
     // 绘制纹理
     void drawTexture(const sf::Texture& texture, float x = 0.0f, float y = 0.0f) {
@@ -364,9 +436,10 @@ public:
     }
     // 绘制图像
     void drawImage(const sf::Image& image, float x = 0.0f, float y = 0.0f) {
-        sf::Texture texture;
-        texture.loadFromImage(image);
-        drawTexture(texture, x, y);
+        m_cachedTexture.loadFromImage(image);
+        sf::Sprite sprite(m_cachedTexture);
+        sprite.setPosition({ x, y });
+        target->draw(sprite);
     }
 };
 

@@ -24,19 +24,26 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 	LogSystem::getInstance().init(PATH_CFG.GetLogPath() / "MainLog.log", LogLevel::DEBUG, true, true, 5000);
 	LogSystem::getInstance().setWindowTitle(u8"日志");
 
+    LOG_INFO(u8"日志启动 log run");
+
+    LOG_INFO(u8"检查DLL加载情况 check runtime Dlls");
+    CheckRuntimeDlls();
+    LOG_INFO(u8"DLL加载情况检查完毕 check runtime Dlls END");
+
+    LOG_INFO(u8"准备初始化 init start");
 	// 窗口
 	sf::ContextSettings settings;
 	settings.antiAliasingLevel = 4;
 
-    m_window = sf::RenderWindow(sf::VideoMode({ 1600, 1000 }),
-        L"电场强度可视化",
+    m_window = sf::RenderWindow(
+        sf::VideoMode({ 1600, 1000 }),
+        L"电场可视化",
         sf::Style::Default,
         sf::State::Windowed,
         settings);
-    m_window.setVerticalSyncEnabled(true);
-    m_window.setFramerateLimit(120);
+    LOG_INFO(u8"SFML 窗口创建完成 SFML window OK");
 
-    LOG_INFO(u8"窗口创建 Window created");
+    m_window.setFramerateLimit(120);
 
     // imgui
     sf::Clock m_deltaClock;
